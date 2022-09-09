@@ -27,7 +27,9 @@ library(osmdata)
 wrobb <- getbb("Wrocław, Poland")
 
 xml_routes <- opq(wrobb, timeout = 60) |> 
-  add_osm_features(features = c("\"route\"= \"bus\"", "\"route\" = \"tram\"")) |>
+  add_osm_features(features = c("\"route\"= \"bus\"", "\"route\" = \"tram\"", 
+                                "\"public_transport\" = \"stop_position\"",
+                                "\"public_transport\" = \"platform\"")) |>
   osmdata_xml(filename = "data/xml_routes.xml")
 
 osm_routes <- osmdata_sf(doc = xml_routes)
@@ -94,7 +96,7 @@ osm_stops <-
   subset(disused.public_transport %in% c("platform", "stop_position") | 
            public_transport %in% c("platform", "stop_position") | 
            highway %in% c("bus_stop", "platform") | railway == "tram_stop") |>
-  subset(select = c(osm_id, name, official_name, ref, ref.zdik, public_transport, disused.public_transport)) |>
+  subset(select = c(osm_id, name, official_name, ref, ref.2, ref.zdik, public_transport, disused.public_transport)) |>
   dplyr::mutate(ref_common = ifelse(is.na(ref) & !is.na(ref.zdik), ref.zdik, ref)) |>
   sf::st_join(polygon, left = FALSE) |>
   dplyr::mutate(long = unlist(purrr::map(geometry,1)), lat = unlist(purrr::map(geometry,2))) |>

@@ -94,6 +94,80 @@ dbGetQuery(con, paste(
   "(SELECT distinct(ref) FROM osm_stops WHERE public_transport IN ('platform', 'stop_position') AND ref IS NOT NULL)")) |> head()
   
 
+
+dbGetQuery(con, paste0("SELECT osm_id FROM osm_stops WHERE public_transport = '",{{pt}},"' AND (ref_common = '",{{x}},"' OR  \"ref.2\" = '",{{x}},"')" ))
+
+get_osm_id <- function(x, pt, name = "") {
+  b <- dbGetQuery(con, paste0("SELECT osm_id FROM osm_stops WHERE public_transport = '",{{pt}},"' AND (ref_common = '",{{x}},"' OR  \"ref.2\" = '",{{x}},"')" ))
+  if(nrow(b) == 1) {
+    return(as.character(b))    
+  }
+  else {
+    if(nrow(b) == 0 & nchar({{name}}) > 0) {
+    # try by name
+    gtfs_stop <- dbGetQuery(con, paste0("SELECT * FROM gtfs_stops WHERE stop_code = '",{{x}},"'"))
+    
+    osm_stops <- dbGetQuery(con, paste0("SELECT * FROM osm_stops WHERE public_transport = '",{{pt}},"'",
+                                        "AND (lower(name) LIKE lower('%",{{name}},"%')",
+                                        "OR lower(official_name) LIKE lower('%",{{name}},"%'))"))
+    if(nrow(osm_stops) > 0) {
+      osm_stops$stop_lon <- gtfs_stop$stop_lon
+      osm_stops$stop_lat <- gtfs_stop$stop_lat
+      
+      b <- osm_stops |>
+        dplyr::rowwise() |>
+        dplyr::mutate(distance = odl(stop_lon, stop_lat, long, lat)) |>
+        dplyr::arrange(distance) |>
+        head(1) |>
+        subset(select = c(osm_id))
+      return(as.character(b))
+    }
+    else {
+      return(NA)
+    }
+    }
+    else {return(NA)}
+  }  
+}
+
+# get_osm_id(18717, "stop_position")
+# get_osm_id(90336010, "stop_position", "Wilkszyn - Polna")
+
+
+dbGetQuery(con, paste0("SELECT * FROM osm_stops WHERE official_name IS NOT NULL"))
+
+
+all <- gtfs$stops |>
+  dplyr::rowwise() |>
+  dplyr::mutate(stop_position = get_osm_id(stop_code, "stop_position")) |>
+  dplyr::mutate(platform = get_osm_id(stop_code, "platform")) |>
+  dplyr::mutate(stop_position_without_ref = ifelse(is.na(stop_position), get_osm_id(stop_code, "stop_position", stop_name), NA)) |>
+  dplyr::mutate(platform_without_ref = ifelse(is.na(stop_position), get_osm_id(stop_code, "platform", stop_name), NA))
+
+all |>
+  subset(stop_code == '25498')
+
+x <- '25498'
+dbGetQuery(con, paste0("SELECT osm_id FROM osm_points WHERE ref = '",{{x}},"' OR  \"ref.2\" = '",{{x}},"'" ))
+
+osm_routes$osm_points |>
+  subset(osm_id == 9094988473)
+
+all |>
+  subset(is.na(stop_position) & is.na(stop_position_without_ref) & is.na(platform) & is.na(platform_without_ref)) |>
+  sf::st_as_sf(coords = c("stop_lon","stop_lat"), crs = 4326)
+
+# |>
+#   sf::st_write(dsn = "data/all_bez_osm.shp", append = FALSE)
+
+b <- gtfs_as_sf(gtfs)
+b$stops |>
+  subset(stop_code == '723951')
+#  sf::st_write(dsn = "data/gtfs_all_stops.shp")
+
+
+
+
 # TODO dokończyć sprawdzanie linii
 osm_routes$osm_points |>
   subset(ref == '18333' | name == 'Las Ratyński') |>
