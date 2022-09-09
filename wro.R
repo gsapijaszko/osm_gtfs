@@ -106,7 +106,6 @@ dbGetQuery(con, paste("SELECT COUNT(*) FROM osm_stops",
 nrow(check_osm_stop_positions)
 
 top_variants <- data.frame()
-
 for(route in unique(gtfs$routes$route_id)) {
   print(route)
   trips <- gtfs$trips |>
@@ -129,7 +128,6 @@ for(route in unique(gtfs$routes$route_id)) {
 gtfs_routes <- top_variants |>
   dplyr::left_join(gtfs$stop_times, by = "trip_id") |>
   dplyr::left_join(gtfs$stops, by="stop_id")
-
 
 head(gtfs_routes)
 dbWriteTable(con, "gtfs_top_routes", gtfs_routes, overwrite = TRUE)
@@ -187,6 +185,3 @@ osmroutes$osm_points |>
   subset(!is.na(public_transport) & ref == '12153') |>
   subset(select = c(osm_id, name, ref))
 
-
-
-as.POSIXct("2022-07-15 23:00:00")+3583902/1000
